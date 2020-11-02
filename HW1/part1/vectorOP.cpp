@@ -59,13 +59,14 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
   __pp_vec_int one = _pp_vset_int(1);
   __pp_vec_float maximum = _pp_vset_float(9.999999f);
   
-  __pp_mask maskAll, maskIsEqual, maskIsNotEqual, maskbgt;
+  __pp_mask maskVecLen, maskAll, maskIsEqual, maskIsNotEqual, maskbgt;
 
   for (int i = 0; i < N; i += VECTOR_WIDTH)
   {
     // Because N is not sure can divided by VECTOR_WIDTH, so we cannot set the value be a VECTOR_WIDTH
     // We need to check which value is minimum
-    maskAll = _pp_init_ones(min(N - i ,VECTOR_WIDTH));
+    maskVecLen = _pp_init_ones();
+    maskAll = _pp_init_ones(min(N - i, VECTOR_WIDTH));
 
     // Because unknown which one is equal to zero, so we set everyone to be false
     maskIsEqual = _pp_init_ones(0);
@@ -73,29 +74,29 @@ void clampedExpVector(float *values, int *exponents, float *output, int N)
     // Load vector of values from contiguous memory addresses
     _pp_vload_float(x, values + i, maskAll);      // x = values[i];
 
-    _pp_vset_int(y, 0, maskAll);
+    _pp_vset_int(y, 0, maskVecLen);
     _pp_vload_int(y, exponents + i, maskAll);     // y = exponents[i];
 
     // First, set the result to 1, and we can change the value when y != 0
-    _pp_vset_float(result, 1, maskAll);
+    _pp_vset_float(result, 1, maskVecLen);
 
     // Record exp which one is equal to zero => true -> equal, false -> not equal
-    _pp_veq_int(maskIsEqual, y, zero, maskAll);
+    _pp_veq_int(maskIsEqual, y, zero, maskVecLen);
 
     // To know which one is not equal to zero
     maskIsNotEqual = _pp_mask_not(maskIsEqual);
 
     // load value
     __pp_vec_int cnt;
+    _pp_vset_int(cnt, 0, maskVecLen);      // To sure everyone is zero
     _pp_vmove_int(cnt, y, maskIsNotEqual); // count = y;
 
     // While loop
     while(_pp_cntbits(maskIsNotEqual)) {
-
       // Calculate
       _pp_vmult_float(result, result, x, maskIsNotEqual); // result *= x
       _pp_vsub_int(cnt, cnt, one, maskIsNotEqual); // cnt -= 1
-      _pp_vgt_int(maskIsNotEqual, cnt, zero, maskAll); // Check which one is not be zero
+      _pp_vgt_int(maskIsNotEqual, cnt, zero, maskVecLen); // Check which one is not be zero
     }
 
     // Check the result value whether bigger than the maximum is or not
@@ -123,46 +124,23 @@ float arraySumVector(float *values, int N)
 
   // Record the sum
   __pp_vec_float ans;
-  for (int i = 0; i < N; ++i) {
-    printf("%f ", *(values + i));
-  }
-  printf("\n");
 
+  // When run one times, 後面一半就會儲存這次的結果
   for (int i = 0; i + (VECTOR_WIDTH / 2) < N; i += VECTOR_WIDTH / 2) {
     __pp_vec_float tmp;
     _pp_vload_float(ans, values + i, maskAll);
     _pp_hadd_float(tmp, ans);
     _pp_interleave_float(ans, tmp);
     _pp_vstore_float(values + i, ans, maskAll);
-    for (int i = 0; i < VECTOR_WIDTH; ++i) {
-      printf("%f ", ans.value[i]);
-    }
-    printf("\n");
   }
-
-  for (int i = 0; i < N; ++i) {
-    printf("%f ", *(values + i));
-  }
-  printf("\n");
 
   _pp_vload_float(ans, values + N - VECTOR_WIDTH, maskAll);
 
-  for (int i = 0; i < VECTOR_WIDTH; ++i) {
-    printf("%f ", ans.value[i]);
-  }
-  printf("\n");
-
   int cnt = VECTOR_WIDTH / 2;
-  printf("%d\n", cnt);
   while(cnt > 1) {
-    printf("%d\n", cnt);
     __pp_vec_float tmp;
     _pp_hadd_float(tmp, ans);
     _pp_interleave_float(ans, tmp);
-    for (int i = 0; i < VECTOR_WIDTH; ++i) {
-      printf("%f ", ans.value[i]);
-    }
-    printf("\n");
     cnt /= 2;
   }
   
