@@ -124,25 +124,24 @@ float arraySumVector(float *values, int N)
 
   // Record the sum
   __pp_vec_float ans;
+  _pp_vset_float(ans, 0, maskAll);
 
-  // When run one times, 後面一半就會儲存這次的結果
-  for (int i = 0; i + (VECTOR_WIDTH / 2) < N; i += VECTOR_WIDTH / 2) {
-    __pp_vec_float tmp;
-    _pp_vload_float(ans, values + i, maskAll);
-    _pp_hadd_float(tmp, ans);
-    _pp_interleave_float(ans, tmp);
-    _pp_vstore_float(values + i, ans, maskAll);
+  //O(N / VECTOR_WIDTH)
+  for (int i = 0; i < N; i += VECTOR_WIDTH) {
+    __pp_vec_float tmp, tmp2;
+    _pp_vload_float(tmp, values + i, maskAll);
+    _pp_hadd_float(tmp2, tmp);
+    _pp_vadd_float(ans, ans, tmp2, maskAll);
   }
 
-  _pp_vload_float(ans, values + N - VECTOR_WIDTH, maskAll);
-
-  int cnt = VECTOR_WIDTH / 2;
-  while(cnt > 1) {
+  //O(log2(vector_width))
+  int len = VECTOR_WIDTH / 2;
+  while(len > 1) {
     __pp_vec_float tmp;
-    _pp_hadd_float(tmp, ans);
-    _pp_interleave_float(ans, tmp);
-    cnt /= 2;
+    _pp_interleave_float(tmp, ans);
+    _pp_hadd_float(ans, tmp);
+    len /= 2;
   }
-  
+
   return ans.value[0];
 }
