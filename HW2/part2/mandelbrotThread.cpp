@@ -36,13 +36,17 @@ void workerThreadStart(WorkerArgs *const args)
     // half of the image and thread 1 could compute the bottom half.
 
     // printf("Hello world from thread %d\n", args->threadId);
-    int per_thread_row = args->height / ((args->numThreads) * (args->numThreads));
     double startTime = CycleTimer::currentSeconds();
-    for(int i = 0; i < args->numThreads; ++i) {
-        int this_thread_start_row = (args->threadId + (args->numThreads * i)) * per_thread_row;
-        mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, 
-            args->height, this_thread_start_row, per_thread_row, args->maxIterations, args->output);
+    for(uint i = 0; i < args->height; ++i) {
+        if(i % args->numThreads == args->threadId) {
+            mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, 
+                args->height, i, 1, args->maxIterations, args->output);
+        }
     }
+    // int per_block = args->height / args->numThreads;
+    // int thread_start = args->threadId * per_block;
+    // mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, 
+    //     args->height, thread_start, per_block, args->maxIterations, args->output);
     double endTime = CycleTimer::currentSeconds();
     // printf("[thread %d]:\t\t[%.3f] ms\n", args->threadId, (endTime - startTime) * 1000);
 }
