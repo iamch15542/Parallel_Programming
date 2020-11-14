@@ -23,6 +23,8 @@ void pageRank(Graph g, double *solution, double damping, double convergence)
 
   int numNodes = num_nodes(g);
   double equal_prob = 1.0 / numNodes;
+
+  #pragma omp parallel for
   for (int i = 0; i < numNodes; ++i)
   {
     solution[i] = equal_prob;
@@ -56,4 +58,50 @@ void pageRank(Graph g, double *solution, double damping, double convergence)
      }
 
    */
+  bool converged = false;
+  double* score_new = (double*)malloc(sizeof(double) * numNodes);
+  while(!converged) {
+
+    // Variable
+    double sum = 0.0, no_out = 0.0;
+
+    // no outgoing edges
+    #pragma omp parallel for reduction(+:no_out)
+    for(int j = 0; j < numNodes; ++j) {
+      int leave_size = outgoing_size(g, j);
+      if(leave_size == 0) {
+        no_out += (damping * solution[j] / numNodes);
+      }
+    }
+    
+    for(int i = 0; i < numNodes; ++i) {
+
+      // tmp variable
+      sum = 0;
+      
+      // Get incoming edges
+      const Vertex* start = incoming_begin(g, i);
+      const Vertex* end = incoming_end(g, i);
+      for(const Vertex* v = start; v != end; v++) {
+        int leave_size = outgoing_size(g, *v);
+        sum += (solution[*v] / leave_size);
+      }
+      score_new[i] = (damping * sum) + (1.0 - damping) / numNodes;
+
+      // no out
+      score_new[i] += no_out;
+    }
+    
+    double global_diff = 0.0;
+    #pragma omp parallel for reduction(+:global_diff)
+    for(int i = 0; i < numNodes; ++i) {
+      global_diff += abs(score_new[i] - solution[i]);
+      solution[i] = score_new[i];
+    }
+    
+
+    printf("%.10lf %.10lf\n", global_diff, convergence);
+    converged = (global_diff < convergence);
+  }
+  free(score_new);
 }
