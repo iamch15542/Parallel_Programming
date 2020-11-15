@@ -109,6 +109,41 @@ void bfs_top_down(Graph graph, solution *sol)
     }
 }
 
+// BFS_Bottom_up
+void bottom_up_step(
+    graph* g,
+    vertex_set* frontier,
+    int deep,
+    int* distances)
+{
+    // to count how many node in next level
+    int local_count = 0;
+    
+    #pragma omp parallel for reduction(+: local_count)
+    for(int i = 0; i < g->num_nodes; i++) {
+        if(frontier->vertices[i] == 0) {                  // 0 means not visit
+            int start_edge = g->incoming_starts[i];
+            int end_edge = (i == g->num_nodes - 1) 
+                            ? g->num_edges 
+                            : g->incoming_starts[i + 1];
+            // iterate every income node, and to find which one is come from previous level
+            for(int neighbor = start_edge; neighbor < end_edge; neighbor ++) {
+                
+                int income_node = g->incoming_edges[neighbor];
+                if(frontier->vertices[income_node] == deep) {
+                    distances[i] = distances[income_node] + 1;
+                    local_count++;
+                    frontier->vertices[i] = deep + 1;              // be next level node
+                    break;
+                }
+            }
+        }
+    }
+
+    // count sum
+    frontier->count = local_count;
+}
+
 void bfs_bottom_up(Graph graph, solution *sol)
 {
     // For PP students:
@@ -122,6 +157,31 @@ void bfs_bottom_up(Graph graph, solution *sol)
     // As was done in the top-down case, you may wish to organize your
     // code by creating subroutine bottom_up_step() that is called in
     // each step of the BFS process.
+    
+    vertex_set list1;
+    // vertex_set list2;
+    vertex_set_init(&list1, graph->num_nodes);
+    // vertex_set_init(&list2, graph->num_nodes);
+
+    vertex_set* frontier = &list1;
+    // vertex_set* new_frontier = &list2;
+
+    // initialize all nodes to NOT_VISITED
+    #pragma omp parallel for
+    for (int i = 0; i < graph->num_nodes; i++)
+        sol->distances[i] = NOT_VISITED_MARKER;
+    
+    // setup frontier with the root node    
+    frontier->vertices[frontier->count++] = 1; // have one vertices need to visit
+    sol->distances[ROOT_NODE_ID] = 0;          // root to root -> distances = zero
+    
+    int deep = 1;                              // Lowest level, if up, then add one
+    while (frontier->count != 0)
+    {
+        vertex_set_clear(frontier);
+        bottom_up_step(graph, frontier, deep, sol->distances);   // collect the next level
+        deep++;                                                  // up one level
+    }
 }
 
 void bfs_hybrid(Graph graph, solution *sol)
@@ -129,5 +189,5 @@ void bfs_hybrid(Graph graph, solution *sol)
     // For PP students:
     //
     // You will need to implement the "hybrid" BFS here as
-    // described in the handout.
+    // described in the handout. 
 }
