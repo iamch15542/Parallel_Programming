@@ -33,6 +33,7 @@ void top_down_step(
     vertex_set *new_frontier,
     int *distances)
 {
+    #pragma omp parallel for
     for (int i = 0; i < frontier->count; i++)
     {
 
@@ -51,8 +52,11 @@ void top_down_step(
             if (distances[outgoing] == NOT_VISITED_MARKER)
             {
                 distances[outgoing] = distances[node] + 1;
-                int index = new_frontier->count++;
-                new_frontier->vertices[index] = outgoing;
+                #pragma omp critical
+                {
+                    int index = new_frontier->count++;
+                    new_frontier->vertices[index] = outgoing;
+                }
             }
         }
     }
@@ -74,6 +78,7 @@ void bfs_top_down(Graph graph, solution *sol)
     vertex_set *new_frontier = &list2;
 
     // initialize all nodes to NOT_VISITED
+    #pragma omp parallel for
     for (int i = 0; i < graph->num_nodes; i++)
         sol->distances[i] = NOT_VISITED_MARKER;
 
