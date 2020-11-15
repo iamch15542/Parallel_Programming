@@ -75,10 +75,12 @@ void pageRank(Graph g, double *solution, double damping, double convergence)
       }
     }
     
+    // Every node
+    #pragma omp parallel for firstprivate(sum)
     for(int i = 0; i < numNodes; ++i) {
 
       // tmp variable
-      sum = 0;
+      sum = 0.0;
       
       // Get incoming edges
       const Vertex* start = incoming_begin(g, i);
@@ -87,6 +89,7 @@ void pageRank(Graph g, double *solution, double damping, double convergence)
         int leave_size = outgoing_size(g, *v);
         sum += (solution[*v] / leave_size);
       }
+      
       score_new[i] = (damping * sum) + (1.0 - damping) / numNodes;
 
       // no out
