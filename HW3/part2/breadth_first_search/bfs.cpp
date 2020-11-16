@@ -38,24 +38,25 @@ void top_down_step(
 
         int node = frontier->vertices[i];
         int start_edge = g->outgoing_starts[node];
-        int end_edge = (node == g->num_nodes - 1)
-                           ? g->num_edges
-                           : g->outgoing_starts[node + 1];
+        int end_edge = (node == g->num_nodes - 1) ? g->num_edges : g->outgoing_starts[node + 1];
 
+        // save all outnode
+        int local_result[end_edge - start_edge], local_count = 0;
+        
         // attempt to add all neighbors to the new frontier
-        for (int neighbor = start_edge; neighbor < end_edge; neighbor++)
-        {
+        for (int neighbor = start_edge; neighbor < end_edge; neighbor++) {
             int outgoing = g->outgoing_edges[neighbor];
-
-            if (distances[outgoing] == NOT_VISITED_MARKER)
-            {
+            if (distances[outgoing] == NOT_VISITED_MARKER) {
                 distances[outgoing] = distances[node] + 1;
-                #pragma omp critical
-                {
-                    int index = new_frontier->count++;
-                    new_frontier->vertices[index] = outgoing;
-                }
+                local_result[local_count++] = outgoing;
             }
+        }
+
+        // one time to save local to global
+        if(local_count == 0) continue;
+        int index = __sync_fetch_and_add(&new_frontier->count, local_count);
+        for(int j = 0; j < local_count; ++j) {
+            new_frontier->vertices[index + j] = local_result[j];
         }
     }
 }
@@ -119,21 +120,24 @@ void bottom_up_step(
     for(int i = 0; i < g->num_nodes; ++i) {
         if(!visit_check[i]) {
             int start_edge = g->incoming_starts[i];
-            int end_edge = (i == g->num_nodes - 1)
-                               ? g->num_edges
-                               : g->incoming_starts[i + 1];
-
-            for (int neighbor = start_edge; neighbor < end_edge; neighbor++) {
+            int end_edge = (i == g->num_nodes - 1) ? g->num_edges : g->incoming_starts[i + 1];
+            
+            // save all outnode
+            int local_result[end_edge - start_edge], local_count = 0;
+            for(int neighbor = start_edge; neighbor < end_edge; neighbor++) {
                 int income_node = g->incoming_edges[neighbor];
                 if(visit_check[income_node]) {
                     distances[i] = distances[income_node] + 1;
-                    #pragma omp critical
-                    {
-                        int index = new_frontier->count++;
-                        new_frontier->vertices[index] = i;
-                    }
+                    local_result[local_count++] = i;
                     break;
                 }
+            }
+
+            // one time to save local to global
+            if(local_count == 0) continue;
+            int index = __sync_fetch_and_add(&new_frontier->count, local_count);
+            for(int j = 0; j < local_count; ++j) {
+                new_frontier->vertices[index + j] = local_result[j];
             }
         }
     }
@@ -171,7 +175,7 @@ void bfs_bottom_up(Graph graph, solution *sol)
     bool* visit_check = (bool*)malloc(sizeof(bool) * graph->num_nodes);
 
     // initialize all nodes to NOT_VISITED
-    #pragma omp parallel for schedule(guided)
+    #pragma omp parallel for
     for (int i = 0; i < graph->num_nodes; i++) {
         sol->distances[i] = NOT_VISITED_MARKER;
         visit_check[i] = false;
@@ -214,7 +218,7 @@ void bfs_hybrid(Graph graph, solution *sol)
     bool* visit_check = (bool*) malloc(graph->num_nodes * sizeof(bool));
 
     // initialize all nodes to NOT_VISITED
-    #pragma omp parallel for schedule(guided)
+    #pragma omp parallel for
     for (int i = 0; i < graph->num_nodes; i++) {
         sol->distances[i] = NOT_VISITED_MARKER;
         visit_check[i] = false;
@@ -224,19 +228,18 @@ void bfs_hybrid(Graph graph, solution *sol)
     frontier->vertices[frontier->count++] = ROOT_NODE_ID;
     sol->distances[ROOT_NODE_ID] = 0;                     // root to root -> distances = zero
     visit_check[ROOT_NODE_ID] = true;                     // root has visited
-    
-    int left = graph->num_nodes - 1;
+
     while (frontier->count != 0) {
         vertex_set_clear(new_frontier);
         
-        if(frontier->count < left * 0.1) {
+        if(frontier->count < 1000000) {
             top_down_step(graph, frontier, new_frontier, sol->distances);
         } else {
             bottom_up_step(graph, frontier, new_frontier, sol->distances, visit_check);
         }
 
         #pragma omp parallel for
-        for (int i=0; i<new_frontier->count; i++){
+        for (int i = 0; i < new_frontier->count; i++) {
             visit_check[new_frontier->vertices[i]] = true;
         }
 
@@ -244,7 +247,6 @@ void bfs_hybrid(Graph graph, solution *sol)
         vertex_set *tmp = frontier;
         frontier = new_frontier;
         new_frontier = tmp;
-        left -= frontier->count;
     }
 
     // release memory
