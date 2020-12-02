@@ -144,8 +144,8 @@ void bottom_up_step(
     
     // node in new_frontier is visited
     #pragma omp parallel for
-    for (int i = 0; i < new_frontier->count; ++i) {
-        visit_check[new_frontier->vertices[i]] = 1;
+    for(int i = 0; i < new_frontier->count; ++i) {
+        visit_check[new_frontier->vertices[i]] = true;
     }
 }
 
@@ -234,13 +234,12 @@ void bfs_hybrid(Graph graph, solution *sol)
         
         if(frontier->count < 1000000) {
             top_down_step(graph, frontier, new_frontier, sol->distances);
+            #pragma omp parallel for
+            for(int i = 0; i < new_frontier->count; i++) {
+                visit_check[new_frontier->vertices[i]] = true;
+            }
         } else {
             bottom_up_step(graph, frontier, new_frontier, sol->distances, visit_check);
-        }
-
-        #pragma omp parallel for
-        for (int i = 0; i < new_frontier->count; i++) {
-            visit_check[new_frontier->vertices[i]] = true;
         }
 
         // swap pointers
