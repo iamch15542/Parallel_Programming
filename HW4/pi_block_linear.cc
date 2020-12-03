@@ -5,8 +5,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <random>       // for random_device
+#include <iostream>
 
-unsigned int xorshift32(unsigned int x) {
+unsigned int xorshift32(unsigned int& x) {
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
@@ -31,12 +32,14 @@ int main(int argc, char **argv)
     long per_p = tosses / world_size, cnt = 0, recv[world_size];
 
     // run monte carlo
-    double x, y;
-    unsigned int seed = time(NULL) * world_rank;
+    std::random_device rd;
+    unsigned int rdn = rd();
+    long long check = 1073741824;
     for(size_t i = 0; i < per_p; ++i) {
-        x = (double)rand_r(&seed) / RAND_MAX;
-        y = (double)rand_r(&seed) / RAND_MAX;
-        if ((x * x + y * y) <= 1.0) {
+        unsigned int seed = xorshift32(rdn);
+        unsigned int x = (seed & 0x7FFF0000) >> 16;
+        unsigned int y = (seed & 0x00007FFF);
+        if ((x * x + y * y) <= check) {
             cnt++;
         }
     }
