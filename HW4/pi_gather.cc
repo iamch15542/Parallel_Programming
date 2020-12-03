@@ -5,6 +5,19 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+typedef long long int ll;
+
+unsigned int monte_carlo_pi(unsigned int seed, long long per_p) {
+    double x, y;
+    for(ll i = 0; i < per_p; ++i) {
+        x = (double)rand_r(&seed) / RAND_MAX;
+        y = (double)rand_r(&seed) / RAND_MAX;
+        if ((x * x + y * y) <= 1.0) {
+            cnt++;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     // --- DON'T TOUCH ---
@@ -16,6 +29,8 @@ int main(int argc, char **argv)
     // ---
 
     // TODO: MPI init
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
     // TODO: use MPI_Gather
 
