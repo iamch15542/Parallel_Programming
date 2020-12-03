@@ -4,19 +4,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-typedef long long int ll;
-
-unsigned int monte_carlo_pi(unsigned int seed, long long per_p) {
-    double x, y;
-    for(ll i = 0; i < per_p; ++i) {
-        x = (double)rand_r(&seed) / RAND_MAX;
-        y = (double)rand_r(&seed) / RAND_MAX;
-        if ((x * x + y * y) <= 1.0) {
-            cnt++;
-        }
-    }
-}
+#include <math.h>
 
 int main(int argc, char **argv)
 {
@@ -31,27 +19,42 @@ int main(int argc, char **argv)
     // TODO: MPI init
     MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Status status;
 
-    // TODO: binary tree redunction
     // init variable
-    ll per_cnt[world_size];
-    unsigned int seed = time(NULL) * world_rank;
+    long per_p = tosses / world_size, cnt = 0, recv_cnt;
 
-    if(world_rank > 0) {
-        ll cnt = monte_carlo_pi(seed, tosses / world_size);
-        MPI_Send(&cnt, 1, MPI_LONG_LONG, 0, 1, MPI_COMM_WORLD);
-    } else if(world_rank == 0) {
-        // TODO: master
-        per_cnt[0] = monte_carlo_pi(seed, tosses / world_size);
-        for(long long int i = 1; i < world_size; ++i) {
-            MPI_Recv(&per_cnt[i], world_size, MPI_LONG_LONG, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    // run monte carlo
+    double x, y;
+    unsigned int seed = time(NULL) * world_rank;
+    for(size_t i = 0; i < per_p; ++i) {
+        x = (double)rand_r(&seed) / RAND_MAX;
+        y = (double)rand_r(&seed) / RAND_MAX;
+        if ((x * x + y * y) <= 1.0) {
+            cnt++;
         }
     }
 
-    if (world_rank == 0)
-    {
-        // TODO: PI result
+    // TODO: binary tree redunction
+    int active = 1;
+    int log_size = (int)log2(world_size);
 
+    for(int k = 0; k < log_size; ++k) {
+        if (active) {
+            //if bit k is set in rank
+            if ((1 << k) & world_rank) {
+                MPI_Send(&cnt, 1, MPI_LONG, world_rank - ((int) pow(2,k)), 0, MPI_COMM_WORLD);
+                active = 0;
+            } else {
+                MPI_Recv(&recv_cnt, 1, MPI_LONG, world_rank + ((int) pow(2,k)), 0, MPI_COMM_WORLD, &status);
+                cnt += recv_cnt;
+            }
+        }
+    }
+
+    if (world_rank == 0) {
+        // TODO: PI result
+        pi_result = 4 * ((double)cnt / (double)tosses);
 
         // --- DON'T TOUCH ---
         double end_time = MPI_Wtime();
