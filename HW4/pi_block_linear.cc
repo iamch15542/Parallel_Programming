@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <random>       // for random_device
-#include <iostream>
 
 unsigned int xorshift32(unsigned int& x) {
     x ^= x << 13;

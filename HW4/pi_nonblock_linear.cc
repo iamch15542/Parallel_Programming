@@ -4,6 +4,14 @@
 #include <time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <random>       // for random_device
+
+unsigned int xorshift32(unsigned int& x) {
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+}
 
 int main(int argc, char **argv)
 {
@@ -15,24 +23,46 @@ int main(int argc, char **argv)
     int world_rank, world_size;
     // ---
 
-    // TODO: MPI init
+    // TODO: init MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 
-    if (world_rank > 0)
-    {
-        // TODO: MPI workers
+    // init variable
+    long per_p = tosses / world_size, cnt = 0, recv[world_size];
+
+    // run monte carlo
+    std::random_device rd;
+    unsigned int rdn = rd();
+    long long check = 1073741824;
+    for(size_t i = 0; i < per_p; ++i) {
+        unsigned int seed = xorshift32(rdn);
+        unsigned int x = (seed & 0x7FFF0000) >> 16;
+        unsigned int y = (seed & 0x00007FFF);
+        if ((x * x + y * y) <= check) {
+            cnt++;
+        }
     }
-    else if (world_rank == 0)
-    {
+
+    if(world_rank > 0) {
+        // TODO: MPI workers
+        MPI_Send(&cnt, 1, MPI_LONG, 0, 1, MPI_COMM_WORLD);
+    } else if (world_rank == 0) {
         // TODO: non-blocking MPI communication.
         // Use MPI_Irecv, MPI_Wait or MPI_Waitall.
-        MPI_Request requests[];
+        recv[0] = cnt;
+        MPI_Request requests[world_size];
+        for(int i = 1; i < world_size; ++i) {
+            MPI_Irecv(&recv[i], 1, MPI_LONG, i, 1, MPI_COMM_WORLD, &requests[i]);
+        }
 
-        MPI_Waitall();
+        MPI_Waitall(world_size - 1, &requests[1], MPI_STATUSES_IGNORE);
     }
 
-    if (world_rank == 0)
-    {
+    if(world_rank == 0) {
         // TODO: PI result
+        long total = 0;
+        for(int i = 0; i < world_size; ++i) total += recv[i];
+        pi_result = 4 * ((double)total / (double)tosses);
 
         // --- DON'T TOUCH ---
         double end_time = MPI_Wtime();
