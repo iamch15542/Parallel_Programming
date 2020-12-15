@@ -47,7 +47,7 @@ extern void construct_matrices(int *n_ptr, int *m_ptr, int *l_ptr, int **a_mat_p
 extern void matrix_multiply(const int n, const int m, const int l, const int *a_mat, const int *b_mat) {
     
     // get MPI info
-    int rank, size, *result;
+    int rank, size, *result, *tmp;
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
