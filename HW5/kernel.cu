@@ -8,34 +8,25 @@ __global__ void mandelKernel(float stepX, float stepY, float lowerX, float lower
     // float x = lowerX + thisX * stepX;
     // float y = lowerY + thisY * stepY;
 
-    __shared__ int block_result[256];
-    
+    int idx = (blockIdx.y * blockDim.y + threadIdx.y) * (gridDim.x * blockDim.x) + (blockIdx.x * blockDim.x + threadIdx.x);
     float x = lowerX + (blockIdx.x * blockDim.x + threadIdx.x) * stepX;
     float y = lowerY + (blockIdx.y * blockDim.y + threadIdx.y) * stepY;
     
-    float z_re = x, z_im = y;
+    float z_re = x, z_im = y, re, im, tmp;
     int i;
     for (i = 0; i < maxIterations; ++i) {
-        if (z_re * z_re + z_im * z_im > 4.f)
+        re = __fmul_rn(z_re, z_re);
+        im = __fmul_rn(z_im, z_im);
+        tmp = __fadd_rn(re, im);
+        if (tmp > 4.f)
             break;
 
-        float new_re = z_re * z_re - z_im * z_im;
-        float new_im = 2.f * z_re * z_im;
-        z_re = x + new_re;
-        z_im = y + new_im;
+        float new_re = __fsub_rn(re, im);
+        float new_im = 2.f * __fmul_rn(z_re, z_im);
+        z_re = __fadd_rn(x, new_re);
+        z_im = __fadd_rn(y, new_im);
     }
-
-    block_result[threadIdx.y * blockDim.x + threadIdx.x] = i;
-    __syncthreads();
-
-    if(threadIdx.x == 0 && threadIdx.y == 0) {
-        for(int i = 0; i < 16; ++i) {
-            for(int j = 0; j < 16; ++j) {
-                int idx = (blockIdx.y * blockDim.y + j) * (gridDim.x * blockDim.x) + (blockIdx.x * blockDim.x + i);
-                img_result[idx] = block_result[j * 16 + i];
-            }
-        }
-    }
+    img_result[idx] = i;
 }
 
 // Host front-end function that allocates the memory and launches the GPU kernel
