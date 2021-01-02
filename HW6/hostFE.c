@@ -38,9 +38,9 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
     clSetKernelArg(kernel, 5, sizeof(int), (void*)&imageWidth);
     
     // execute kernel
-    size_t localws[2] = {2, 2};
-    size_t globalws[2] = {imageHeight, imageWidth};
-    status = clEnqueueNDRangeKernel(imgqueue, kernel, 2, 0, globalws, localws, 0, NULL, NULL);
+    // size_t localws[2] = {2, 2};
+    size_t globalws = imageSize;
+    status = clEnqueueNDRangeKernel(imgqueue, kernel, 1, 0, &globalws, 0, 0, NULL, NULL);
     CHECK(status, "clEnqueueNDRangeKernel");
 
     if(status == CL_SUCCESS) {

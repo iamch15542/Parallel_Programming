@@ -1,8 +1,8 @@
-__kernel void convolution(const __global float *inputImage, const __global float *filter, __global float *outputImage,
+__kernel void convolution(const __global float *inputImage, __constant float *filter, __global float *outputImage,
                           const int filterWidth, const int imageHeight, const int imageWidth) 
 {
-    const int i = get_global_id(0); // col
-    const int j = get_global_id(1); // row
+    const int i = get_global_id(0) / imageWidth; // col
+    const int j = get_global_id(0) % imageWidth; // row
 
     int sum = 0;
     int halfwidth = filterWidth / 2;
