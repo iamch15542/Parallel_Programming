@@ -26,19 +26,23 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
     // Declare the cuda memory
     int data_size = imageHeight * imageWidth * sizeof(float);
 
-
     float *d_inputImage;
-    cudaMalloc(&d_inputImage, data_size);
+    size_t pitch;
+    cudaMallocPitch((void **)&d_inputImage, &pitch, imageWidth * sizeof(float), imageHeight);
 
     float *d_filter;
-    cudaMalloc(&d_filter, filterWidth * filterWidth * sizeof(float));
+    size_t pitch2;
+    cudaMallocPitch((void **)&d_filter, &pitch2, filterWidth * sizeof(float), filterWidth);
 
     float *img_result;
-    cudaMalloc(&img_result, data_size);
-
+    size_t pitch3;
+    cudaMallocPitch((void **)&img_result, &pitch3, imageWidth * sizeof(float), imageHeight);
+    printf("good\n")
     // copy data
-    cudaMemcpy(d_inputImage, inputImage, data_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_filter, filter, filterWidth * filterWidth * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_inputImage, inputImage, data_size, cudaMemcpyHostToDevice);
+    // cudaMemcpy(d_filter, filter, filterWidth * filterWidth * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy2D(d_inputImage, imageWidth * sizeof(float), inputImage, pitch, imageWidth * sizeof(float), imageHeight, cudaMemcpyHostToDevice);
+    cudaMemcpy2D(d_filter, filterWidth * sizeof(float), filter, pitch2, filterWidth * sizeof(float), filterWidth, cudaMemcpyHostToDevice);
 
     dim3 blockSize(20, 20);
     dim3 numBlock(imageHeight / 20, imageWidth / 20);
@@ -50,6 +54,7 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
 
     // 將 Device 的資料傳回給 Host
     cudaMemcpy(outputImage, img_result, data_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy2D(outputImage, imageWidth * sizeof(float), img_result, pitch3, imageWidth * sizeof(float), imageHeight, cudaMemcpyDeviceToHost);
 
     // free memory
     cudaFree(d_inputImage);
