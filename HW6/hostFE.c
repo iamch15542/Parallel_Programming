@@ -17,9 +17,12 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
     CHECK(status, "clCreateCommandQueue");
 
     // create buffer on device
-    cl_mem d_inputImage = clCreateBuffer(*context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * imageSize, inputImage, &status);
-    cl_mem d_filter = clCreateBuffer(*context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float) * filterSize, filter, &status);
+    cl_mem d_inputImage = clCreateBuffer(*context, CL_MEM_READ_ONLY, sizeof(float) * imageSize, NULL, &status);
+    cl_mem d_filter = clCreateBuffer(*context, CL_MEM_READ_ONLY, sizeof(float) * filterSize, NULL, &status);
     cl_mem d_outputImage = clCreateBuffer(*context, CL_MEM_WRITE_ONLY, sizeof(float) * imageSize, NULL, &status);
+
+    status = clEnqueueWriteBuffer(imgqueue, d_inputImage, CL_FALSE, 0, sizeof(float) * imageSize, inputImage, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(imgqueue, d_filter, CL_FALSE, 0, sizeof(float) * filterSize, filter, 0, NULL, NULL); 
     
     // cl_mem d_filterWidth = clCreateBuffer(*context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float), &filterWidth, &status);
     // cl_mem d_imageHeight = clCreateBuffer(*context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_int), &imageHeight, &status);
@@ -43,17 +46,15 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
     status = clEnqueueNDRangeKernel(imgqueue, kernel, 1, 0, &globalws, 0, 0, NULL, NULL);
     CHECK(status, "clEnqueueNDRangeKernel");
 
-    if(status == CL_SUCCESS) {
-        status = clEnqueueReadBuffer(imgqueue, d_outputImage, CL_TRUE, 0, sizeof(float) * imageSize, outputImage, NULL, NULL, NULL);
-    }
+    status = clEnqueueReadBuffer(imgqueue, d_outputImage, CL_FALSE, 0, sizeof(float) * imageSize, outputImage, NULL, NULL, NULL);
     CHECK(status, "clEnqueueReadBuffer");
 
     // release opencl
     clReleaseKernel(kernel);
     
-    clReleaseMemObject(d_inputImage);
-    clReleaseMemObject(d_filter);
-    clReleaseMemObject(d_outputImage);
+    // clReleaseMemObject(d_inputImage);
+    // clReleaseMemObject(d_filter);
+    // clReleaseMemObject(d_outputImage);
 
     // clReleaseMemObject(d_filterWidth);
     // clReleaseMemObject(d_imageHeight);
