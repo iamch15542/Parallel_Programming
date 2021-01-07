@@ -12,7 +12,7 @@ __global__ void convolution(float *inputImage, float *filter, float *outputImage
     // Apply the filter to the neighborhood
     for(int fi = -halfwidth; fi <= halfwidth; ++fi) {
         for(int fj = -halfwidth; fj <= halfwidth; ++fj) {
-            if(i + fi >= 0 && i + fi < imageHeight && j + fj >= 0 && j + fj < imageWidth) {
+            if(i + fi >= 0 && i + fi < imageHeight && j + fj >= 0 && j + fj < imageWidth && filter[(fi + halfwidth) * filterWidth + fj + halfwidth]) {
                 sum += inputImage[(i + fi) * imageWidth + j + fj] * filter[(fi + halfwidth) * filterWidth + fj + halfwidth];
             }
         }
@@ -27,25 +27,20 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
     int data_size = imageHeight * imageWidth * sizeof(float);
 
     float *d_inputImage;
-    size_t pitch;
-    cudaMallocPitch((void **)&d_inputImage, &pitch, imageWidth * sizeof(float), imageHeight);
+    cudaMalloc(&d_inputImage, data_size);
 
     float *d_filter;
-    size_t pitch2;
-    cudaMallocPitch((void **)&d_filter, &pitch2, filterWidth * sizeof(float), filterWidth);
+    cudaMalloc(&d_filter, filterWidth * filterWidth * sizeof(float));
 
     float *img_result;
-    size_t pitch3;
-    cudaMallocPitch((void **)&img_result, &pitch3, imageWidth * sizeof(float), imageHeight);
-    printf("good\n")
-    // copy data
-    // cudaMemcpy(d_inputImage, inputImage, data_size, cudaMemcpyHostToDevice);
-    // cudaMemcpy(d_filter, filter, filterWidth * filterWidth * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy2D(d_inputImage, imageWidth * sizeof(float), inputImage, pitch, imageWidth * sizeof(float), imageHeight, cudaMemcpyHostToDevice);
-    cudaMemcpy2D(d_filter, filterWidth * sizeof(float), filter, pitch2, filterWidth * sizeof(float), filterWidth, cudaMemcpyHostToDevice);
+    cudaMalloc(&img_result, data_size);
 
-    dim3 blockSize(20, 20);
-    dim3 numBlock(imageHeight / 20, imageWidth / 20);
+    // copy data
+    cudaMemcpy(d_inputImage, inputImage, data_size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_filter, filter, filterWidth * filterWidth * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 blockSize(20, 30);
+    dim3 numBlock(imageHeight / 20, imageWidth / 30);
 
     convolution<<<numBlock, blockSize>>>(d_inputImage, d_filter, img_result, filterWidth, imageHeight, imageWidth);
 
@@ -54,7 +49,6 @@ void hostFE(int filterWidth, float *filter, int imageHeight, int imageWidth,
 
     // 將 Device 的資料傳回給 Host
     cudaMemcpy(outputImage, img_result, data_size, cudaMemcpyDeviceToHost);
-    cudaMemcpy2D(outputImage, imageWidth * sizeof(float), img_result, pitch3, imageWidth * sizeof(float), imageHeight, cudaMemcpyDeviceToHost);
 
     // free memory
     cudaFree(d_inputImage);
