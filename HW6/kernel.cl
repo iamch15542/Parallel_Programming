@@ -9,7 +9,7 @@ __kernel void convolution(const __global float *inputImage, __constant float *fi
     // Apply the filter to the neighborhood
     for(int fi = -halfwidth; fi <= halfwidth; ++fi) {
         for(int fj = -halfwidth; fj <= halfwidth; ++fj) {
-            if(i + fi >= 0 && i + fi < imageHeight && j + fj >= 0 && j + fj < imageWidth) {
+            if(i + fi >= 0 && i + fi < imageHeight && j + fj >= 0 && j + fj < imageWidth && filter[(fi + halfwidth) * filterWidth + fj + halfwidth]) {
                 sum += inputImage[(i + fi) * imageWidth + j + fj] * filter[(fi + halfwidth) * filterWidth + fj + halfwidth];
             }
         }
