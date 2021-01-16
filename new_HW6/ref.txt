@@ -1,0 +1,17 @@
+https://zhuanlan.zhihu.com/p/97990885
+https://www.cnblogs.com/willhua/p/9463515.html
+http://www.es.ele.tue.nl/~mwijtvliet/5KK73/?page=mmopencl
+https://stackoverflow.com/questions/13297908/keep-getting-cl-invalid-kernel-args-on-nvidia-gpu
+https://www.twblogs.net/a/5d7ff56abd9eee5327fff3cc
+https://www.eriksmistad.no/getting-started-with-opencl-and-gpu-computing/
+
+// good
+http://www.kimicat.com/opencl-1/opencl-jiao-xue-yi
+https://stackoverflow.com/questions/34797014/whats-the-relation-in-opencl-between-get-global-id-and-the-number-of-dimensions
+https://www.cnblogs.com/biglucky/p/3754723.html
+https://stackoverflow.com/questions/45426212/opencl-when-to-use-global-private-local-constant-address-spaces
+
+https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clSetKernelArg.html
+https://www.khronos.org/registry/OpenCL/sdk/2.2/docs/man/html/clEnqueueReadBuffer.html
+https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clEnqueueNDRangeKernel.html
+https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/scalarDataTypes.html
